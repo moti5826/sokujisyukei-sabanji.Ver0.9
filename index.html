@@ -85,6 +85,9 @@ let players=[];
 let raceCount=12;
 let shortcutMap={};
 
+/* 追加：自チーム（Team1） */
+const MY_TEAM_INDEX = 0;
+
 window.onload = () => {
 
 const savedTime = localStorage.getItem("mk_time");
@@ -206,7 +209,6 @@ input.dataset.rank=rank;
 input.dataset.race=r;
 input.dataset.team="";
 
-/* ショートカット処理追加 */
 input.addEventListener("input",()=>{
 
 applyShortcut(input);
@@ -265,7 +267,7 @@ if(next) next.focus();
 
 }
 
-/* 自動補完 */
+/* 改良版自動補完 */
 function autoFillTeam(input){
 
 const format=formatSelect.value;
@@ -297,11 +299,13 @@ const c=count[sc]||0;
 if(c<teamSize) incomplete.push(sc);
 });
 
+/* 追加条件 */
 if(incomplete.length===1){
 
 const target=incomplete[0];
 const remain=teamSize-(count[target]||0);
 
+/* 空き枠と完全一致した場合のみ */
 if(remain===empty.length){
 
 empty.forEach(i=>{
@@ -364,33 +368,32 @@ teams[teamIndex].score+=POINT_TABLE[rank-1];
 
 const sorted=[...teams].sort((a,b)=>b.score-a.score);
 
-const top=sorted[0]?.score||0;
+const myTeam=teams[MY_TEAM_INDEX];
 
-sorted.forEach((t,i)=>{
-
-const diff=top-t.score;
-
-text+=`${i+1}. ${t.name} ${t.score}pts (-${diff})\n`;
-
-});
-
-/* 勝利確定判定 */
 const remain=getRemainingRaces();
 const maxGain=remain*82;
 
-if(sorted.length>1){
+sorted.forEach((t,i)=>{
 
-if(sorted[0].score-sorted[1].score>maxGain){
+const diff=myTeam.score-t.score;
+
+text+=`${i+1}. ${t.name} ${t.score}pts (${diff>=0?"+":""}${diff})\n`;
+
+});
+
+/* 勝敗判定（自チーム基準） */
+
+const enemyMax=Math.max(...teams.filter((t,i)=>i!==MY_TEAM_INDEX).map(t=>t.score));
+
+if(myTeam.score-enemyMax>maxGain){
 
 text+="\n勝利確定！";
 
 }
 
-if(sorted[1].score-sorted[0].score>maxGain){
+if(enemyMax-myTeam.score>maxGain){
 
 text+="\nハワイすぎるわ…";
-
-}
 
 }
 
