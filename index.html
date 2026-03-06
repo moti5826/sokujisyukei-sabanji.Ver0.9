@@ -37,14 +37,6 @@ button{margin:4px;}
 
 <h1>マリオカートワールド即時集計機</h1>
 
-モード：
-<select id="modeSelect">
-<option value="team">チーム戦</option>
-<option value="individual">個人戦</option>
-</select>
-
-<br><br>
-
 形式：
 <select id="formatSelect">
 <option value="12">12v12</option>
@@ -53,7 +45,10 @@ button{margin:4px;}
 <option value="4">4v4</option>
 <option value="3">3v3</option>
 <option value="2">2v2</option>
+<option value="individual">個人戦</option>
 </select>
+
+<br><br>
 
 レース数：
 <select id="raceSelect"></select>
@@ -129,10 +124,9 @@ raceSelect.append(new Option(i,i));
 
 function init(){
 
-/* 追加：開始時間保存 */
 localStorage.setItem("mk_time", Date.now());
 
-const mode=modeSelect.value;
+const format=formatSelect.value;
 raceCount=Number(raceSelect.value);
 
 teams=[];
@@ -141,9 +135,25 @@ players=[];
 teamNameArea.innerHTML="";
 playerNameArea.innerHTML="";
 
-if(mode==="team"){
+if(format==="individual"){
 
-const teamSize=Number(formatSelect.value);
+playerNameArea.innerHTML="<h3>プレイヤー設定</h3>";
+
+for(let i=0;i<24;i++){
+
+players.push({name:`P${i+1}`,score:0});
+
+playerNameArea.innerHTML+=`
+${i+1}:
+<input class="teamInput" id="playerName${i}"><br>
+`;
+}
+
+}
+
+else{
+
+const teamSize=Number(format);
 const teamCount=24/teamSize;
 
 targetRank.innerHTML="";
@@ -162,22 +172,6 @@ teamNameArea.innerHTML+=`
 名前:<input class="teamInput" id="teamName${i}">
 SC:<input class="shortcutInput" id="shortcut${i}" maxlength="1">
 補正:<input class="adjustInput" id="adjust${i}" value="0"><br>
-`;
-}
-
-}
-
-else{
-
-playerNameArea.innerHTML="<h3>プレイヤー設定</h3>";
-
-for(let i=0;i<24;i++){
-
-players.push({name:`P${i+1}`,score:0});
-
-playerNameArea.innerHTML+=`
-${i+1}:
-<input class="teamInput" id="playerName${i}"><br>
 `;
 }
 
@@ -215,8 +209,13 @@ input.dataset.rank=rank;
 input.dataset.race=r;
 input.dataset.team="";
 
+/* 入力後1マス下 */
 input.addEventListener("input",()=>{
+
+autoFillTeam(input);
+moveDown(input);
 recalcScores();
+
 });
 
 td.appendChild(input);
@@ -228,6 +227,59 @@ table.appendChild(tr);
 }
 
 tableArea.appendChild(table);
+
+}
+
+/* ============================= */
+
+/* 下に移動 */
+function moveDown(input){
+
+const rank=Number(input.dataset.rank);
+const race=Number(input.dataset.race);
+
+if(rank<24){
+
+const next=document.querySelector(`input[data-race="${race}"][data-rank="${rank+1}"]`);
+
+if(next) next.focus();
+
+}
+
+}
+
+/* ============================= */
+
+/* 残り1チームなら自動補完 */
+function autoFillTeam(input){
+
+const race=input.dataset.race;
+
+const col=[...document.querySelectorAll(`input[data-race="${race}"]`)];
+
+let used=new Set();
+let empty=[];
+
+col.forEach(i=>{
+if(i.value==="") empty.push(i);
+else used.add(i.value);
+});
+
+if(empty.length>0){
+
+const allTeams=[...document.querySelectorAll(".shortcutInput")].map(i=>i.value).filter(v=>v);
+
+const remain=allTeams.filter(t=>!used.has(t));
+
+if(remain.length===1){
+
+empty.forEach(i=>{
+i.value=remain[0];
+});
+
+}
+
+}
 
 }
 
@@ -253,11 +305,11 @@ return raceCount-finished;
 
 function recalcScores(){
 
-const mode=modeSelect.value;
+const format=formatSelect.value;
 
 let text="";
 
-if(mode==="team"){
+if(format!=="individual"){
 
 teams.forEach(t=>t.score=0);
 
@@ -278,8 +330,14 @@ teams[teamIndex].score+=POINT_TABLE[rank-1];
 
 const sorted=[...teams].sort((a,b)=>b.score-a.score);
 
+const top=sorted[0]?.score||0;
+
 sorted.forEach((t,i)=>{
-text+=`${i+1}. ${t.name} ${t.score}pts\n`;
+
+const diff=top-t.score;
+
+text+=`${i+1}. ${t.name} ${t.score}pts (-${diff})\n`;
+
 });
 
 }
@@ -295,7 +353,6 @@ p.name=document.getElementById(`playerName${i}`).value||`P${i+1}`;
 document.querySelectorAll("input[data-rank]").forEach(input=>{
 
 const rank=Number(input.dataset.rank);
-
 const race=Number(input.dataset.race);
 
 const col=[...document.querySelectorAll(`input[data-race="${race}"]`)];
@@ -308,8 +365,14 @@ players[index].score+=POINT_TABLE[rank-1];
 
 const sorted=[...players].sort((a,b)=>b.score-a.score);
 
+const top=sorted[0]?.score||0;
+
 sorted.forEach((p,i)=>{
-text+=`${i+1}. ${p.name} ${p.score}pts\n`;
+
+const diff=top-p.score;
+
+text+=`${i+1}. ${p.name} ${p.score}pts (-${diff})\n`;
+
 });
 
 }
