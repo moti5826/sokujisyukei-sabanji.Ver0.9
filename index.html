@@ -81,13 +81,11 @@ button{margin:4px;}
 
 <script>
 
-/* ============================= */
 const POINT_TABLE=[
 50,40,35,30,20,18,16,14,12,10,9,8,
 7,6,5,4,3,3,2,2,1,1,1,1
 ];
 
-/* 追加：2時間制限 */
 const DATA_LIMIT = 2 * 60 * 60 * 1000;
 
 let teams=[];
@@ -95,9 +93,6 @@ let players=[];
 let raceCount=12;
 let shortcutMap={};
 
-/* ============================= */
-
-/* 追加：ページ読み込み時チェック */
 window.onload = () => {
 
 const savedTime = localStorage.getItem("mk_time");
@@ -115,8 +110,6 @@ localStorage.clear();
 }
 
 };
-
-/* ============================= */
 
 for(let i=3;i<=32;i++){
 raceSelect.append(new Option(i,i));
@@ -181,8 +174,6 @@ buildTable();
 
 }
 
-/* ============================= */
-
 function buildTable(){
 
 tableArea.innerHTML="";
@@ -209,7 +200,6 @@ input.dataset.rank=rank;
 input.dataset.race=r;
 input.dataset.team="";
 
-/* 入力後1マス下 */
 input.addEventListener("input",()=>{
 
 autoFillTeam(input);
@@ -230,9 +220,6 @@ tableArea.appendChild(table);
 
 }
 
-/* ============================= */
-
-/* 下に移動 */
 function moveDown(input){
 
 const rank=Number(input.dataset.rank);
@@ -248,33 +235,47 @@ if(next) next.focus();
 
 }
 
-/* ============================= */
-
-/* 残り1チームなら自動補完 */
+/* 改良版 自動補完 */
 function autoFillTeam(input){
 
+const format=formatSelect.value;
+if(format==="individual") return;
+
+const teamSize=Number(format);
 const race=input.dataset.race;
 
 const col=[...document.querySelectorAll(`input[data-race="${race}"]`)];
 
-let used=new Set();
+let count={};
 let empty=[];
 
 col.forEach(i=>{
 if(i.value==="") empty.push(i);
-else used.add(i.value);
+else{
+count[i.value]=(count[i.value]||0)+1;
+}
 });
 
-if(empty.length>0){
+const shortcuts=[...document.querySelectorAll(".shortcutInput")]
+.map(i=>i.value)
+.filter(v=>v);
 
-const allTeams=[...document.querySelectorAll(".shortcutInput")].map(i=>i.value).filter(v=>v);
+let incomplete=[];
 
-const remain=allTeams.filter(t=>!used.has(t));
+shortcuts.forEach(sc=>{
+const c=count[sc]||0;
+if(c<teamSize) incomplete.push(sc);
+});
 
-if(remain.length===1){
+if(incomplete.length===1){
+
+const target=incomplete[0];
+const remain=teamSize-(count[target]||0);
+
+if(remain===empty.length){
 
 empty.forEach(i=>{
-i.value=remain[0];
+i.value=target;
 });
 
 }
@@ -282,8 +283,6 @@ i.value=remain[0];
 }
 
 }
-
-/* ============================= */
 
 function getRemainingRaces(){
 
@@ -300,8 +299,6 @@ if(col.every(i=>i.value!=="")) finished++;
 return raceCount-finished;
 
 }
-
-/* ============================= */
 
 function recalcScores(){
 
@@ -384,8 +381,6 @@ remainRace.textContent=`残りレース: ${remain}`;
 copyArea.value=text;
 
 }
-
-/* ============================= */
 
 function copyScores(){
 copyArea.select();
