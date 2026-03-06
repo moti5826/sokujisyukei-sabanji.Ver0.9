@@ -66,11 +66,6 @@ button{margin:4px;}
 
 <br><br>
 
-OBS画像URL：
-<input id="obsImageUrl" style="width:350px">
-
-<br><br>
-
 <button onclick="init()">生成</button>
 <button onclick="resetInputs()">リセット</button>
 
@@ -89,9 +84,6 @@ OBS画像URL：
 <br>
 <button onclick="copyScores()">コピー</button>
 
-<h2>OBS表示URL</h2>
-<input id="obsURL" style="width:500px" readonly>
-
 <script>
 
 /* ============================= */
@@ -100,6 +92,9 @@ const POINT_TABLE=[
 7,6,5,4,3,3,2,2,1,1,1,1
 ];
 
+/* 追加：2時間制限 */
+const DATA_LIMIT = 2 * 60 * 60 * 1000;
+
 let teams=[];
 let players=[];
 let raceCount=12;
@@ -107,13 +102,35 @@ let shortcutMap={};
 
 /* ============================= */
 
-/* ここを変更（3〜32） */
+/* 追加：ページ読み込み時チェック */
+window.onload = () => {
+
+const savedTime = localStorage.getItem("mk_time");
+
+if(savedTime){
+
+const now = Date.now();
+
+if(now - savedTime > DATA_LIMIT){
+
+localStorage.clear();
+
+}
+
+}
+
+};
+
+/* ============================= */
 
 for(let i=3;i<=32;i++){
 raceSelect.append(new Option(i,i));
 }
 
 function init(){
+
+/* 追加：開始時間保存 */
+localStorage.setItem("mk_time", Date.now());
 
 const mode=modeSelect.value;
 raceCount=Number(raceSelect.value);
@@ -167,8 +184,6 @@ ${i+1}:
 }
 
 buildTable();
-
-obsURL.value=location.origin+location.pathname+"?obs=1";
 
 }
 
