@@ -37,6 +37,14 @@ button{margin:4px;}
 
 <h1>マリオカートワールド即時集計機</h1>
 
+モード：
+<select id="modeSelect">
+<option value="team">チーム戦</option>
+<option value="individual">個人戦</option>
+</select>
+
+<br><br>
+
 形式：
 <select id="formatSelect">
 <option value="12">12v12</option>
@@ -67,13 +75,12 @@ OBS画像URL：
 <button onclick="resetInputs()">リセット</button>
 
 <h2 id="remainRace">残りレース: -</h2>
-<h2 id="targetStatus">目標順位: -</h2>
-<h2 id="championStatus">勝利判定: -</h2>
-<h2 id="rankLockStatus">自順位確定: -</h2>
 
 <hr>
 
 <div id="teamNameArea"></div>
+<div id="playerNameArea"></div>
+
 <br>
 <div id="tableArea"></div>
 
@@ -94,387 +101,226 @@ const POINT_TABLE=[
 ];
 
 let teams=[];
+let players=[];
 let raceCount=12;
 let shortcutMap={};
 
 /* ============================= */
-/* 自チーム連動 */
 
-function syncMyTeam(){
+/* ここを変更（3〜32） */
 
-  const team1=document.getElementById("teamName0");
-  const my=document.getElementById("myTeamInput");
-
-  if(!team1 || !my) return;
-
-  team1.addEventListener("input",()=>{
-    my.value=team1.value;
-  });
-
-  my.addEventListener("input",()=>{
-    team1.value=my.value;
-  });
-}
-
-/* ===== 保存 ===== */
-
-function saveInputs(){
-
-  const data={
-    teams:teams,
-    inputs:[]
-  };
-
-  document.querySelectorAll("input[data-rank]").forEach(i=>{
-    data.inputs.push({
-      race:i.dataset.race,
-      rank:i.dataset.rank,
-      team:i.dataset.team,
-      value:i.value
-    });
-  });
-
-  localStorage.setItem("mk_score_data",JSON.stringify(data));
-}
-
-function loadInputs(){
-
-  const data=JSON.parse(localStorage.getItem("mk_score_data")||"null");
-  if(!data) return;
-
-  setTimeout(()=>{
-
-    data.inputs.forEach(d=>{
-      const el=document.querySelector(
-        `input[data-race="${d.race}"][data-rank="${d.rank}"]`
-      );
-      if(!el) return;
-
-      el.value=d.value;
-      el.dataset.team=d.team;
-    });
-
-    recalcScores();
-
-  },200);
-}
-
-/* ===== OBS同期 ===== */
-
-function saveOBS(text){
-  localStorage.setItem("mk_obs_live",JSON.stringify({
-    text,
-    img:obsImageUrl.value
-  }));
-}
-
-function loadOBS(){
-  return JSON.parse(localStorage.getItem("mk_obs_live")||"{}");
-}
-
-const params=new URLSearchParams(location.search);
-if(params.get("obs")){
-  document.body.innerHTML="<div id='obsLive' class='obs'></div>";
-
-  setInterval(()=>{
-    const data=loadOBS();
-    if(!data.text) return;
-
-    document.getElementById("obsLive").innerHTML=
-      (data.img?`<img src="${data.img}">`:"")+
-      data.text.replace(/\n/g,"<br>");
-  },300);
-}
-
-/* ============================= */
-
-for(let i=8;i<=32;i++){
-  raceSelect.append(new Option(i,i));
+for(let i=3;i<=32;i++){
+raceSelect.append(new Option(i,i));
 }
 
 function init(){
 
-  const teamSize=Number(formatSelect.value);
-  raceCount=Number(raceSelect.value);
-  const teamCount=24/teamSize;
+const mode=modeSelect.value;
+raceCount=Number(raceSelect.value);
 
-  teams=[];
+teams=[];
+players=[];
 
-  targetRank.innerHTML="";
-  for(let i=1;i<=teamCount;i++){
-    targetRank.append(new Option(`${i}位`,i));
-  }
+teamNameArea.innerHTML="";
+playerNameArea.innerHTML="";
 
-  teamNameArea.innerHTML="<h3>チーム設定</h3>";
+if(mode==="team"){
 
-  for(let i=0;i<teamCount;i++){
-    const name=`Team${i+1}`;
-    teams.push({name,score:0,adjust:0});
+const teamSize=Number(formatSelect.value);
+const teamCount=24/teamSize;
 
-    teamNameArea.innerHTML+=`
-      チーム${i+1}
-      名前:<input class="teamInput" id="teamName${i}">
-      SC:<input class="shortcutInput" id="shortcut${i}" maxlength="1">
-      補正:<input class="adjustInput" id="adjust${i}" value="0"><br>`;
-  }
-
-  addEnterMove();
-  buildTable();
-
-  obsURL.value=location.origin+location.pathname+"?obs=1";
-
-  loadInputs();
-
-  setTimeout(syncMyTeam,100);
+targetRank.innerHTML="";
+for(let i=1;i<=teamCount;i++){
+targetRank.append(new Option(`${i}位`,i));
 }
 
-function addEnterMove(){
-  setTimeout(()=>{
-    document.querySelectorAll(".teamInput,.shortcutInput,.adjustInput")
-    .forEach((el,i,arr)=>{
-      el.addEventListener("keydown",e=>{
-        if(e.key==="Enter"){
-          e.preventDefault();
-          if(arr[i+1]) arr[i+1].focus();
-        }
-      });
-    });
-  },50);
+teamNameArea.innerHTML="<h3>チーム設定</h3>";
+
+for(let i=0;i<teamCount;i++){
+
+teams.push({name:`Team${i+1}`,score:0,adjust:0});
+
+teamNameArea.innerHTML+=`
+チーム${i+1}
+名前:<input class="teamInput" id="teamName${i}">
+SC:<input class="shortcutInput" id="shortcut${i}" maxlength="1">
+補正:<input class="adjustInput" id="adjust${i}" value="0"><br>
+`;
 }
 
-function resetInputs(){
-  if(!confirm("全データをリセットしますか？")) return;
-  localStorage.clear();
-  location.reload();
 }
+
+else{
+
+playerNameArea.innerHTML="<h3>プレイヤー設定</h3>";
+
+for(let i=0;i<24;i++){
+
+players.push({name:`P${i+1}`,score:0});
+
+playerNameArea.innerHTML+=`
+${i+1}:
+<input class="teamInput" id="playerName${i}"><br>
+`;
+}
+
+}
+
+buildTable();
+
+obsURL.value=location.origin+location.pathname+"?obs=1";
+
+}
+
+/* ============================= */
 
 function buildTable(){
 
-  tableArea.innerHTML="";
-  const table=document.createElement("table");
+tableArea.innerHTML="";
+const table=document.createElement("table");
 
-  let head="<tr><th>順位</th>";
-  for(let r=1;r<=raceCount;r++) head+=`<th>R${r}</th>`;
-  head+="</tr>";
-  table.innerHTML=head;
+let head="<tr><th>順位</th>";
 
-  for(let rank=1;rank<=24;rank++){
+for(let r=1;r<=raceCount;r++) head+=`<th>R${r}</th>`;
 
-    const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${rank}</td>`;
+head+="</tr>";
+table.innerHTML=head;
 
-    for(let r=0;r<raceCount;r++){
+for(let rank=1;rank<=24;rank++){
 
-      const td=document.createElement("td");
-      const input=document.createElement("input");
+const tr=document.createElement("tr");
+tr.innerHTML=`<td>${rank}</td>`;
 
-      input.dataset.rank=rank;
-      input.dataset.race=r;
-      input.dataset.team="";
+for(let r=0;r<raceCount;r++){
 
-      input.addEventListener("keydown",(e)=>{
+const td=document.createElement("td");
+const input=document.createElement("input");
 
-        if(e.key==="Enter"){
-          e.preventDefault();
-          moveNext(input);
-          return;
-        }
+input.dataset.rank=rank;
+input.dataset.race=r;
+input.dataset.team="";
 
-        if(e.key==="Backspace"){
-          e.preventDefault();
-          input.value="";
-          input.dataset.team="";
-          recalcScores();
-          saveInputs();
-          return;
-        }
+input.addEventListener("input",()=>{
+recalcScores();
+});
 
-        const key=e.key.toLowerCase();
-        if(shortcutMap[key]!==undefined){
-          e.preventDefault();
-          const idx=shortcutMap[key];
-          input.dataset.team=idx;
-          input.value=teams[idx].name;
-          moveNext(input);
-          recalcScores();
-          saveInputs();
-        }
-      });
+td.appendChild(input);
+tr.appendChild(td);
 
-      input.addEventListener("input",()=>{
-        const val=input.value.toLowerCase();
-
-        const found=teams.findIndex(t=>
-          t.name.toLowerCase().startsWith(val)
-        );
-
-        if(found!==-1){
-          input.dataset.team=found;
-        }
-
-        autoFillRemaining(input.dataset.race);
-        autoFillTeamLast(input.dataset.race);
-
-        recalcScores();
-        saveInputs();
-      });
-
-      td.appendChild(input);
-      tr.appendChild(td);
-    }
-
-    table.appendChild(tr);
-  }
-
-  tableArea.appendChild(table);
 }
 
-function autoFillRemaining(race){
-
-  const col=[...document.querySelectorAll(`input[data-race="${race}"]`)];
-  const counts=new Array(teams.length).fill(0);
-
-  col.forEach(i=>{
-    if(i.dataset.team!==""){
-      counts[Number(i.dataset.team)]++;
-    }
-  });
-
-  const teamSize=24/teams.length;
-
-  const remainTeams=counts
-    .map((c,i)=>c<teamSize?i:null)
-    .filter(v=>v!==null);
-
-  if(remainTeams.length!==1) return;
-
-  const teamIndex=remainTeams[0];
-
-  col.forEach(input=>{
-    if(input.dataset.team===""){
-      input.dataset.team=teamIndex;
-      input.value=teams[teamIndex].name;
-    }
-  });
+table.appendChild(tr);
 }
 
-function autoFillTeamLast(race){
+tableArea.appendChild(table);
 
-  const col=[...document.querySelectorAll(`input[data-race="${race}"]`)];
-  const teamSize=24/teams.length;
-
-  const counts=new Array(teams.length).fill(0);
-
-  col.forEach(i=>{
-    if(i.dataset.team!==""){
-      counts[Number(i.dataset.team)]++;
-    }
-  });
-
-  const remaining=[];
-
-  counts.forEach((c,i)=>{
-    if(c<teamSize) remaining.push(i);
-  });
-
-  if(remaining.length!==1) return;
-
-  const teamIndex=remaining[0];
-
-  col.forEach(input=>{
-    if(input.dataset.team===""){
-      input.dataset.team=teamIndex;
-      input.value=teams[teamIndex].name;
-    }
-  });
 }
 
-function moveNext(input){
-  const race=Number(input.dataset.race);
-  const rank=Number(input.dataset.rank);
-
-  let next=document.querySelector(
-    `input[data-race="${race}"][data-rank="${rank+1}"]`
-  );
-
-  if(!next){
-    next=document.querySelector(
-      `input[data-race="${race+1}"][data-rank="1"]`
-    );
-  }
-
-  if(next) next.focus();
-}
+/* ============================= */
 
 function getRemainingRaces(){
-  let finished=0;
-  for(let r=0;r<raceCount;r++){
-    const col=[...document.querySelectorAll(`input[data-race="${r}"]`)];
-    if(col.every(i=>i.dataset.team!=="")) finished++;
-  }
-  return raceCount-finished;
+
+let finished=0;
+
+for(let r=0;r<raceCount;r++){
+
+const col=[...document.querySelectorAll(`input[data-race="${r}"]`)];
+
+if(col.every(i=>i.value!=="")) finished++;
+
 }
+
+return raceCount-finished;
+
+}
+
+/* ============================= */
 
 function recalcScores(){
 
-  teams.forEach(t=>t.score=0);
-  shortcutMap={};
+const mode=modeSelect.value;
 
-  teams.forEach((t,i)=>{
-    t.name=document.getElementById(`teamName${i}`).value;
+let text="";
 
-    const sc=document.getElementById(`shortcut${i}`).value.toLowerCase();
-    if(sc) shortcutMap[sc]=i;
+if(mode==="team"){
 
-    const adj=Number(document.getElementById(`adjust${i}`).value||0);
-    t.adjust=adj;
-  });
+teams.forEach(t=>t.score=0);
 
-  document.querySelectorAll("input[data-rank]").forEach(input=>{
-    if(input.dataset.team==="") return;
-    const teamIndex=Number(input.dataset.team);
-    const rank=Number(input.dataset.rank);
-    teams[teamIndex].score+=POINT_TABLE[rank-1];
-  });
+teams.forEach((t,i)=>{
+t.name=document.getElementById(`teamName${i}`).value||`Team${i+1}`;
+});
 
-  teams.forEach(t=>{
-    t.score+=t.adjust;
-  });
+document.querySelectorAll("input[data-rank]").forEach(input=>{
 
-  const sorted=[...teams].sort((a,b)=>b.score-a.score);
-  const myTeam=myTeamInput.value.trim();
+if(input.dataset.team==="") return;
 
-  const remain=getRemainingRaces();
-  remainRace.textContent=`残りレース: ${remain}`;
+const teamIndex=Number(input.dataset.team);
+const rank=Number(input.dataset.rank);
 
-  const target=targetRank.value;
+teams[teamIndex].score+=POINT_TABLE[rank-1];
 
-  let text=`残り${remain}レース\n`;
-  text+=`目標順位：${target}位\n\n`;
+});
 
-  const my=sorted.find(t=>t.name===myTeam);
+const sorted=[...teams].sort((a,b)=>b.score-a.score);
 
-  sorted.forEach((team,i)=>{
+sorted.forEach((t,i)=>{
+text+=`${i+1}. ${t.name} ${t.score}pts\n`;
+});
 
-    let diff=0;
-
-    if(my){
-      diff=team.score-my.score;
-    }
-
-    const sign=diff>0?`+${diff}`:diff;
-
-    text+=`${i+1}. ${team.name} ${team.score}pts (${sign})\n`;
-
-  });
-
-  copyArea.value=text;
-  saveOBS(text);
 }
 
+else{
+
+players.forEach(p=>p.score=0);
+
+players.forEach((p,i)=>{
+p.name=document.getElementById(`playerName${i}`).value||`P${i+1}`;
+});
+
+document.querySelectorAll("input[data-rank]").forEach(input=>{
+
+const rank=Number(input.dataset.rank);
+
+const race=Number(input.dataset.race);
+
+const col=[...document.querySelectorAll(`input[data-race="${race}"]`)];
+
+const index=col.indexOf(input);
+
+players[index].score+=POINT_TABLE[rank-1];
+
+});
+
+const sorted=[...players].sort((a,b)=>b.score-a.score);
+
+sorted.forEach((p,i)=>{
+text+=`${i+1}. ${p.name} ${p.score}pts\n`;
+});
+
+}
+
+const remain=getRemainingRaces();
+
+remainRace.textContent=`残りレース: ${remain}`;
+
+copyArea.value=text;
+
+}
+
+/* ============================= */
+
 function copyScores(){
-  copyArea.select();
-  document.execCommand("copy");
+copyArea.select();
+document.execCommand("copy");
+}
+
+function resetInputs(){
+
+if(!confirm("全データをリセットしますか？")) return;
+
+localStorage.clear();
+location.reload();
+
 }
 
 </script>
