@@ -260,7 +260,7 @@ if(next) next.focus();
 
 }
 
-/* 修正：自動補完ロジック */
+/* 修正：残り1チームのみ自動補完 */
 function autoFillTeam(input){
 
 const format=formatSelect.value;
@@ -276,9 +276,7 @@ let empty=[];
 
 col.forEach(i=>{
 if(i.value==="") empty.push(i);
-else{
-count[i.value]=(count[i.value]||0)+1;
-}
+else count[i.value]=(count[i.value]||0)+1;
 });
 
 const shortcuts=[...document.querySelectorAll(".shortcutInput")]
@@ -292,13 +290,11 @@ const c=count[sc]||0;
 if(c<teamSize) incomplete.push(sc);
 });
 
-/* 未完成チームが1つだけ */
 if(incomplete.length===1){
 
 const target=incomplete[0];
 const remain=teamSize-(count[target]||0);
 
-/* 空き枠と完全一致 */
 if(remain===empty.length){
 
 empty.forEach(i=>{
@@ -361,20 +357,21 @@ const myTeam=teams[MY_TEAM_INDEX];
 
 sorted.forEach((t,i)=>{
 
-/* 修正：自チーム基準点差 */
 const diff=myTeam.score-t.score;
 
 text+=`${i+1}. ${t.name} ${t.score}pts (${diff>=0?"+":""}${diff})\n`;
 
 });
 
-/* 勝利確定判定 修正 */
+/* 修正：理論上逆転不可能な場合のみ勝利確定 */
+
 const remain=getRemainingRaces();
-const maxDiff=(Math.max(...POINT_TABLE)-Math.min(...POINT_TABLE))*remain;
+
+const maxSwing=(POINT_TABLE[0]-POINT_TABLE[23])*remain;
 
 const enemyMax=Math.max(...teams.filter((t,i)=>i!==MY_TEAM_INDEX).map(t=>t.score));
 
-if(myTeam.score-enemyMax>=maxDiff && myTeam.score>enemyMax){
+if(myTeam.score-enemyMax>maxSwing){
 
 text+="\n勝利確定！";
 
