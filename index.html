@@ -85,7 +85,6 @@ let players=[];
 let raceCount=12;
 let shortcutMap={};
 
-/* 追加：自チーム（Team1） */
 const MY_TEAM_INDEX = 0;
 
 window.onload = () => {
@@ -170,7 +169,6 @@ buildTable();
 
 }
 
-/* ショートカットマップ生成 */
 function buildShortcutMap(){
 
 shortcutMap={};
@@ -180,8 +178,6 @@ if(i.value) shortcutMap[i.value]=idx;
 });
 
 }
-
-/* ============================= */
 
 function buildTable(){
 
@@ -230,7 +226,6 @@ tableArea.appendChild(table);
 
 }
 
-/* ショートカット入力 */
 function applyShortcut(input){
 
 buildShortcutMap();
@@ -250,8 +245,6 @@ input.dataset.team=idx;
 
 }
 
-/* ============================= */
-
 function moveDown(input){
 
 const rank=Number(input.dataset.rank);
@@ -267,7 +260,7 @@ if(next) next.focus();
 
 }
 
-/* 改良版自動補完 */
+/* 修正：自動補完ロジック */
 function autoFillTeam(input){
 
 const format=formatSelect.value;
@@ -299,13 +292,13 @@ const c=count[sc]||0;
 if(c<teamSize) incomplete.push(sc);
 });
 
-/* 追加条件 */
+/* 未完成チームが1つだけ */
 if(incomplete.length===1){
 
 const target=incomplete[0];
 const remain=teamSize-(count[target]||0);
 
-/* 空き枠と完全一致した場合のみ */
+/* 空き枠と完全一致 */
 if(remain===empty.length){
 
 empty.forEach(i=>{
@@ -317,8 +310,6 @@ i.value=target;
 }
 
 }
-
-/* ============================= */
 
 function getRemainingRaces(){
 
@@ -335,8 +326,6 @@ if(col.every(i=>i.value!=="")) finished++;
 return raceCount-finished;
 
 }
-
-/* ============================= */
 
 function recalcScores(){
 
@@ -370,30 +359,24 @@ const sorted=[...teams].sort((a,b)=>b.score-a.score);
 
 const myTeam=teams[MY_TEAM_INDEX];
 
-const remain=getRemainingRaces();
-const maxGain=remain*82;
-
 sorted.forEach((t,i)=>{
 
+/* 修正：自チーム基準点差 */
 const diff=myTeam.score-t.score;
 
 text+=`${i+1}. ${t.name} ${t.score}pts (${diff>=0?"+":""}${diff})\n`;
 
 });
 
-/* 勝敗判定（自チーム基準） */
+/* 勝利確定判定 修正 */
+const remain=getRemainingRaces();
+const maxDiff=(Math.max(...POINT_TABLE)-Math.min(...POINT_TABLE))*remain;
 
 const enemyMax=Math.max(...teams.filter((t,i)=>i!==MY_TEAM_INDEX).map(t=>t.score));
 
-if(myTeam.score-enemyMax>maxGain){
+if(myTeam.score-enemyMax>=maxDiff && myTeam.score>enemyMax){
 
 text+="\n勝利確定！";
-
-}
-
-if(enemyMax-myTeam.score>maxGain){
-
-text+="\nハワイすぎるわ…";
 
 }
 
@@ -408,8 +391,6 @@ text+=`\n残りレース:${remain}`;
 copyArea.value=text;
 
 }
-
-/* ============================= */
 
 function copyScores(){
 copyArea.select();
