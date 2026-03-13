@@ -10,11 +10,11 @@ table{border-collapse:collapse;}
 td,th{border:1px solid #555;padding:4px;text-align:center;}
 
 input{
-  width:90px;
-  background:#222;
-  color:white;
-  border:1px solid #555;
-  text-align:center;
+width:90px;
+background:#222;
+color:white;
+border:1px solid #555;
+text-align:center;
 }
 
 .teamInput{width:120px;margin:3px;}
@@ -261,7 +261,7 @@ if(next) next.focus();
 }
 
 
-/* ★完全自動補完ロジック */
+/* ★完全自動補完 */
 function autoFillTeam(input){
 
 const format=formatSelect.value;
@@ -272,38 +272,43 @@ const race=input.dataset.race;
 
 const col=[...document.querySelectorAll(`input[data-race="${race}"]`)];
 
-let count={};
+let count=new Array(teams.length).fill(0);
 let empty=[];
 
 col.forEach(i=>{
-if(i.value==="") empty.push(i);
-else count[i.value]=(count[i.value]||0)+1;
-});
 
-/* チーム名取得 */
-let teamNames=[];
-teams.forEach((t,i)=>{
-const name=document.getElementById(`teamName${i}`).value||`Team${i+1}`;
-teamNames.push(name);
+if(i.value===""){
+
+empty.push(i);
+
+}else{
+
+const t=i.dataset.team;
+
+if(t!=="") count[Number(t)]++;
+
+}
+
 });
 
 let incomplete=[];
 
-teamNames.forEach(name=>{
-const c=count[name]||0;
-if(c<teamSize) incomplete.push(name);
+count.forEach((c,i)=>{
+if(c<teamSize) incomplete.push(i);
 });
 
-/* 未完成チームが1つだけ */
 if(incomplete.length===1){
 
-const target=incomplete[0];
-const need=teamSize-(count[target]||0);
+const teamIndex=incomplete[0];
+const need=teamSize-count[teamIndex];
 
 if(need===empty.length){
 
+const name=document.getElementById(`teamName${teamIndex}`).value||`Team${teamIndex+1}`;
+
 empty.forEach(i=>{
-i.value=target;
+i.value=name;
+i.dataset.team=teamIndex;
 });
 
 }
