@@ -331,6 +331,7 @@ function recalcScores(){
 const format=formatSelect.value;
 
 let text="";
+let victoryFlag=false; // ★追加
 
 if(format!=="individual"){
 
@@ -366,16 +367,16 @@ text+=`${i+1}. ${t.name} ${t.score}pts (${diff>=0?"+":""}${diff})\n`;
 
 });
 
-/* ★勝利確定判定追加 */
+/* ★勝利確定判定 */
 
 const remain=getRemainingRaces();
-
 const teamSize=Number(format);
+
 const myMin=myTeam.score + remain * POINT_TABLE[teamSize-1];
 const enemyMax=Math.max(...teams.filter((t,i)=>i!==MY_TEAM_INDEX).map(t=>t.score + remain * POINT_TABLE[0]));
 
 if(myTeam.score>enemyMax-remain*POINT_TABLE[0] && myMin>enemyMax){
-text+="\n\n勝利確定！";
+victoryFlag=true;
 }
 
 }
@@ -385,6 +386,10 @@ const remain=getRemainingRaces();
 remainRace.textContent=`残りレース: ${remain}`;
 
 text+=`\n残りレース:${remain}`;
+
+if(victoryFlag){ // ★追加
+text+="\n\n勝利確定！";
+}
 
 copyArea.value=text;
 
